@@ -139,5 +139,42 @@ namespace Abacloud.ApiClient
             //    _++;
             //}
         }
+
+        public bool SetTagForContent(string a_contentGuid, string a_tag, out string a_errorMessage)
+        {
+            var _retVal = false;
+            a_errorMessage = string.Empty;
+
+            var _request = WebRequest.Create(serverHost + string.Format("//contents//{0}//details//tags",a_contentGuid));
+            _request.Headers.Add(HttpRequestHeader.Authorization, string.Format("Session {0}", sessionId));
+            _request.Method = "PUT";
+            JsonWriter _jw = new JsonTextWriter(new StreamWriter(_request.GetRequestStream()));
+            _jw.WriteStartObject();
+            _jw.WritePropertyName("tag");
+            _jw.WriteValue(a_tag);
+            _jw.WriteEndObject();
+            _jw.Close();
+            var _response = getResponse(_request);
+            if (_response != null)
+            {
+                switch (_response.StatusCode)
+                {
+                    case HttpStatusCode.OK:
+                        _retVal = true;
+                        break;
+                    case HttpStatusCode.Forbidden:
+                        a_errorMessage = "Доступ запрещен";
+                        break;
+                    default:
+                        throw new NotSupportedException(string.Format("Непредусмотретный ответ сервера {0}", _response.StatusCode));
+                }
+            }
+            else
+            {
+                a_errorMessage = "Нет ответа от сервера";
+            }
+
+            return _retVal;
+        }
     }
 }
