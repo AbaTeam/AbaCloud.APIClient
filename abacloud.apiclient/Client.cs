@@ -140,6 +140,11 @@ namespace Abacloud.ApiClient
             //}
         }
 
+        private void copyStream(FileStream a_outStream, HttpWebResponse a_response)
+        {
+            a_response.GetResponseStream().CopyTo(a_outStream);
+        }
+
         public bool SetTagForContent(string a_contentGuid, string a_tag, out string a_errorMessage)
         {
             var _retVal = false;
@@ -164,6 +169,42 @@ namespace Abacloud.ApiClient
                         break;
                     case HttpStatusCode.Forbidden:
                         a_errorMessage = "Доступ запрещен";
+                        break;
+                    default:
+                        throw new NotSupportedException(string.Format("Непредусмотретный ответ сервера {0}", _response.StatusCode));
+                }
+            }
+            else
+            {
+                a_errorMessage = "Нет ответа от сервера";
+            }
+
+            return _retVal;
+        }
+
+        public bool GetContent(string a_guid, FileStream a_stream, out string a_errorMessage)
+        {
+            var _retVal = false;
+            a_errorMessage = string.Empty;
+
+            var _request = WebRequest.Create(string.Format("{0}contents//{1}//", serverHost, a_guid));
+            _request.Headers.Add(HttpRequestHeader.Authorization, string.Format("Session {0}", sessionId));
+            _request.Method = "GET";
+
+            var _response = getResponse(_request);
+            if (_response != null)
+            {
+                switch (_response.StatusCode)
+                {
+                    case HttpStatusCode.OK:
+                        copyStream(a_stream, _response);
+                        _retVal = true;
+                        break;
+                    case HttpStatusCode.Forbidden:
+                        a_errorMessage = "Доступ запрещен";
+                        break;
+                    case HttpStatusCode.NotFound:
+                        a_errorMessage = "Контент не найден";
                         break;
                     default:
                         throw new NotSupportedException(string.Format("Непредусмотретный ответ сервера {0}", _response.StatusCode));
