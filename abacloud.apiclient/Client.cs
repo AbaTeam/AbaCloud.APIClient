@@ -11,26 +11,36 @@ namespace Abacloud.ApiClient
     public class Client
     {
         private readonly string serverHost;
-        private readonly string sessionId;
+        private readonly Session session;
 
-        private Client(string a_serverHost, string a_sessionId)
+        private Client(string a_serverHost, Session a_session)
         {
             serverHost = a_serverHost;
-            sessionId = a_sessionId;
+            session = a_session;
+        }
+
+        public Session Session
+        {
+            get { return session; }
         }
 
         public static Client Create(string a_serverHost, string a_userName, string a_password)
         {
             Client _retVal = null;
-            var _sesssionId = createSession(a_serverHost, a_userName, a_password);
-            if (!string.IsNullOrEmpty(_sesssionId))
-                _retVal = new Client(a_serverHost, _sesssionId);
+            var _sesssion = createSession(a_serverHost, a_userName, a_password);
+            if (_sesssion!=null)
+                _retVal = new Client(a_serverHost, _sesssion);
             return _retVal;
         }
 
-        private static string createSession(string a_serverHost, string a_email, string a_password)
+        public static Client Create(string a_serverHost, Session  a_session)
         {
-            string _retVal=null;
+            return new Client(a_serverHost, a_session);
+        }
+
+        private static Session createSession(string a_serverHost, string a_email, string a_password)
+        {
+            Session _retVal = null;
             var _request = WebRequest.Create(a_serverHost+"sessions/");
             _request.Method = "POST";
 
@@ -56,7 +66,7 @@ namespace Abacloud.ApiClient
                     _js.Read();
                     _js.Read();
                     if (_js.Path == "sessionId")
-                        _retVal = _js.ReadAsString();
+                        _retVal = new Session(_js.ReadAsString());
                     _js.Close();
                     _tr.Close();
                     break;
@@ -73,7 +83,7 @@ namespace Abacloud.ApiClient
             var _retVal = string.Empty;
             a_errorMessage = string.Empty;
             var _request = WebRequest.Create(serverHost + "//contents");
-            _request.Headers.Add(HttpRequestHeader.Authorization, string.Format("Session {0}", sessionId));
+            _request.Headers.Add(HttpRequestHeader.Authorization, string.Format("Session {0}", session));
             _request.Method = "PUT";
             copyStream(a_stream, _request);
 
@@ -151,7 +161,7 @@ namespace Abacloud.ApiClient
             a_errorMessage = string.Empty;
 
             var _request = WebRequest.Create(serverHost + string.Format("//contents//{0}//details//tags",a_contentGuid));
-            _request.Headers.Add(HttpRequestHeader.Authorization, string.Format("Session {0}", sessionId));
+            _request.Headers.Add(HttpRequestHeader.Authorization, string.Format("Session {0}", session));
             _request.Method = "PUT";
             JsonWriter _jw = new JsonTextWriter(new StreamWriter(_request.GetRequestStream()));
             _jw.WriteStartObject();
@@ -188,7 +198,7 @@ namespace Abacloud.ApiClient
             a_errorMessage = string.Empty;
 
             var _request = WebRequest.Create(string.Format("{0}contents//{1}//", serverHost, a_guid));
-            _request.Headers.Add(HttpRequestHeader.Authorization, string.Format("Session {0}", sessionId));
+            _request.Headers.Add(HttpRequestHeader.Authorization, string.Format("Session {0}", session));
             _request.Method = "GET";
 
             var _response = getResponse(_request);
