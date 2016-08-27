@@ -12,9 +12,11 @@ namespace Abacloud.ApiClient
     {
         private readonly string serverHost;
         private readonly Session session;
+        private readonly string computerName;
 
         private Client(string a_serverHost, Session a_session)
         {
+            computerName = Environment.MachineName;
             serverHost = a_serverHost;
             session = a_session;
         }
@@ -28,12 +30,12 @@ namespace Abacloud.ApiClient
         {
             Client _retVal = null;
             var _sesssion = createSession(a_serverHost, a_userName, a_password);
-            if (_sesssion!=null)
+            if (_sesssion != null)
                 _retVal = new Client(a_serverHost, _sesssion);
             return _retVal;
         }
 
-        public static Client Create(string a_serverHost, Session  a_session)
+        public static Client Create(string a_serverHost, Session a_session)
         {
             return new Client(a_serverHost, a_session);
         }
@@ -41,7 +43,7 @@ namespace Abacloud.ApiClient
         private static Session createSession(string a_serverHost, string a_email, string a_password)
         {
             Session _retVal = null;
-            var _request = WebRequest.Create(a_serverHost+"sessions/");
+            var _request = WebRequest.Create(a_serverHost + "sessions/");
             _request.Method = "POST";
 
             TextWriter _tw = new StreamWriter(_request.GetRequestStream());
@@ -55,7 +57,7 @@ namespace Abacloud.ApiClient
             //a_request.ContentLength = a_request.GetRequestStream().Length;
             _wr.Close();
             _tw.Close();
-            var _response = (HttpWebResponse)_request.GetResponse();
+            var _response = (HttpWebResponse) _request.GetResponse();
             switch (_response.StatusCode)
             {
                 case HttpStatusCode.Created:
@@ -73,7 +75,8 @@ namespace Abacloud.ApiClient
                 case HttpStatusCode.Forbidden:
                     break;
                 default:
-                    throw new NotSupportedException(string.Format("Не известный возврат состояния ответа {0}", _response.StatusCode));
+                    throw new NotSupportedException(string.Format("Не известный возврат состояния ответа {0}",
+                        _response.StatusCode));
             }
             return _retVal;
         }
@@ -105,7 +108,8 @@ namespace Abacloud.ApiClient
                         a_errorMessage = "Доступ запрещен";
                         break;
                     default:
-                        throw new NotSupportedException(string.Format("Не предусмотретный ответ сервера {0}", _response.StatusCode));
+                        throw new NotSupportedException(string.Format("Не предусмотретный ответ сервера {0}",
+                            _response.StatusCode));
                 }
             }
             else
@@ -160,7 +164,7 @@ namespace Abacloud.ApiClient
             var _retVal = false;
             a_errorMessage = string.Empty;
 
-            var _request = WebRequest.Create(serverHost + string.Format("//contents//{0}//details//tags",a_contentGuid));
+            var _request = WebRequest.Create(serverHost + string.Format("//contents//{0}//details//tags", a_contentGuid));
             _request.Headers.Add(HttpRequestHeader.Authorization, string.Format("Session {0}", session));
             _request.Method = "PUT";
             JsonWriter _jw = new JsonTextWriter(new StreamWriter(_request.GetRequestStream()));
@@ -181,7 +185,8 @@ namespace Abacloud.ApiClient
                         a_errorMessage = "Доступ запрещен";
                         break;
                     default:
-                        throw new NotSupportedException(string.Format("Непредусмотретный ответ сервера {0}", _response.StatusCode));
+                        throw new NotSupportedException(string.Format("Непредусмотретный ответ сервера {0}",
+                            _response.StatusCode));
                 }
             }
             else
@@ -217,7 +222,8 @@ namespace Abacloud.ApiClient
                         a_errorMessage = "Контент не найден";
                         break;
                     default:
-                        throw new NotSupportedException(string.Format("Непредусмотретный ответ сервера {0}", _response.StatusCode));
+                        throw new NotSupportedException(string.Format("Непредусмотретный ответ сервера {0}",
+                            _response.StatusCode));
                 }
             }
             else
@@ -226,6 +232,45 @@ namespace Abacloud.ApiClient
             }
 
             return _retVal;
+        }
+
+        public bool ExistContent(string a_hash)
+        {
+            var _retVal = default(bool);
+
+            var _request = WebRequest.Create(string.Format("{0}contents//?hash={1}//", serverHost, a_hash));
+            _request.Headers.Add(HttpRequestHeader.Authorization, string.Format("Session {0}", session));
+            _request.Method = "GET";
+
+            var _response = getResponse(_request);
+            if (_response != null)
+            {
+                switch (_response.StatusCode)
+                {
+                    case HttpStatusCode.OK:
+                        _retVal = true;
+                        break;
+                    case HttpStatusCode.NotFound:
+                        _retVal = false;
+                        break;
+                    default:
+                        throw new NotSupportedException(string.Format("Непредусмотретный ответ сервера {0}",
+                            _response.StatusCode));
+                }
+            }
+
+            return _retVal;
+        }
+
+        public void SendFile(string a_fileName)
+        {
+            var _stream = File.OpenRead(a_fileName);
+            string _error;
+            var _guid = SendContent(_stream, out _error);
+            _stream.Close();
+
+            SetTagForContent(_guid, string.Format("SYSTEM$CUMPUTER_NAME {0}", computerName), out _error);
+            SetTagForContent(_guid, string.Format("SYSTEM$FILE_NAME {0}", a_fileName), out _error);
         }
     }
 }
